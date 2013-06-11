@@ -4,7 +4,7 @@ require 'csv'
 
 Pkg_data = "data/pkg_list.csv"
 The_year = "2013"
-The_month = "05"
+The_month = "06"
 
 #Create lists of packages to load for each library
 @aal_load_pkgs = []
