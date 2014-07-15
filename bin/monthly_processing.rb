@@ -141,7 +141,7 @@ class MainMenu
         @recs = []
         MARC::Reader.new(path).each {|rec| @recs << rec if rec.packages.include?(pkg)}
         pkgclean = pkg.gsub(/[^a-z0-9]+/i, '-')
-        path = "output/#{file}-#{pkgclean}.mrc"
+        path = "data/ssmrc/split_pkg/#{file}-#{pkgclean}.mrc"
         writer = MARC::Writer.new(path)
 
         @recs.each do |rec|
@@ -176,7 +176,7 @@ class MainMenu
           kfilename = k.gsub(/([^-A-Za-z0-9_,@ ])/n, ' ')
           po = Package.new.from_db($pcoll.find('names' => k).first)
           libs = po.active_libs.join ","
-          path = "output/#{file}-#{libs}-#{kfilename}.mrc"
+          path = "data/ssmrc/split_pkg/#{file}-#{libs}-#{kfilename}.mrc"
           writer = MARC::Writer.new(path)
           v.each do |rec|
             writer.write(rec)
