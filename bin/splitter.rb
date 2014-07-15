@@ -1,10 +1,15 @@
+require 'highline/import'
 require 'marc'
 require 'marc_sersol'
 require 'csv'
 
 Pkg_data = "data/pkg_list.csv"
-The_year = "2013"
-The_month = "06"
+the_date = ask("Enter month you are processing in the format: YYYYMM")
+The_year = the_date[0..3]
+The_month = the_date[4..5]
+puts "the year = #{The_year}"
+puts "the month = #{The_month}"
+puts "the day = 01"
 
 #Create lists of packages to load for each library
 @aal_load_pkgs = []
@@ -32,8 +37,8 @@ end
 exrec_data = CSV.read("data/mill_data.csv", :headers => true)
 @exrecs = {}
 exrec_data.each do |row|
-  ssid = row['ssid']
-  loc = row['loc']
+  ssid = row['1']
+  loc = row['LOCATION']
   if loc.include?("noh")
     @exrecs[ssid] = "hsl"
   elsif loc.include?("k")
