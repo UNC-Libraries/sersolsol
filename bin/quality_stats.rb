@@ -35,6 +35,7 @@ require 'facets'
   author_findable_recs = 0
   pub_name_recs = 0
   pub_date_recs = 0
+  missing_pub_field_recs = 0
   series_recs = 0    
   person_ae_recs = 0
   person_aes = 0
@@ -53,9 +54,16 @@ require 'facets'
     main_entry_recs += 1 if me
     sor_recs += 1 if sor
     author_findable_recs += 1 if me || sor
-    
-    pub_name_recs += 1 if r['260']['b'] && r['260']['b'].match(/s\. ?n\./) == false
-    pub_date_recs += 1 if r['260']['c']
+
+    if r['260']
+      if r['260']['b']
+        pub_name_recs += 1 unless r['260']['b'].match(/[Ss]\. ?n\./)
+      end
+      pub_date_recs += 1 if r['260']['c']
+    else
+      missing_pub_field_recs += 1
+    end
+  
     
     series_recs += 1 if r['440'] || r['490'] || r['800'] || r['830']
     
@@ -135,6 +143,7 @@ report('Statement of resp.', sor_recs)
 report('Findable by author', author_findable_recs)
 report('Publisher name', pub_name_recs)
 report('Publication date', pub_date_recs)
+report('Missing 260', missing_pub_field_recs)
 report('Series', series_recs)
 report('Person added entries', person_ae_recs)
 puts "#{person_aes}\t\tNumber of person added entries"
