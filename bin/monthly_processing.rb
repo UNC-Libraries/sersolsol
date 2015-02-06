@@ -174,9 +174,7 @@ class MainMenu
         @pkgs.each_pair do |k, v|
           puts "#{v.size} records: #{k}"
           kfilename = k.gsub(/([^-A-Za-z0-9_,@ ])/n, ' ')
-          po = Package.new.from_db($pcoll.find('names' => k).first)
-          libs = po.active_libs.join ","
-          path = "data/ssmrc/split_pkg/#{file}-#{libs}-#{kfilename}.mrc"
+          path = "data/ssmrc/split_pkg/#{kfilename}.mrc"
           writer = MARC::Writer.new(path)
           v.each do |rec|
             writer.write(rec)
