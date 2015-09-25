@@ -75,34 +75,53 @@ class MainMenu
         QuitOrMain.new
       end
       
-      menu.choice :check_packages_in_add_file do
+      menu.choice :check_package_list_against_marc_files do
         # opens marc file and gets records
         addmrc = "data/ssmrc/orig/#{The_year}/#{The_year}#{The_month}01add.mrc"
-        reader = MARC::Reader.new(addmrc)
+        chmrc = "data/ssmrc/orig/#{The_year}/#{The_year}#{The_month}01change.mrc"
+        delmrc = "data/ssmrc/orig/#{The_year}/#{The_year}#{The_month}01delete.mrc"        
+        readers = [MARC::Reader.new(addmrc), MARC::Reader.new(chmrc), MARC::Reader.new(delmrc)]
       
-        @mrc_pkg_names = []
+        @mrc_pkg_names = {}
 
-        reader.each do |r|
-          pkg_names = r.packages
-          pkg_names.each {|name| @mrc_pkg_names << name}
+        readers.each do |reader|
+          reader.each do |r|
+            pkg_names = r.packages
+            pkg_names.each do |name|
+              @mrc_pkg_names[name] = 1
+            end
+          end
         end
-
-        @mrc_pkg_names.uniq!
 
         pdata = CSV.read(Pkg_data, :headers => true)
         
-        @csv_pkg_names = []
+        @csv_pkg_data = {}
         
         pdata.each do |row|
           pnames = row['name']
-          pnames.split(";;;").each {|name| @csv_pkg_names << name}
+          unless row['aalload'] || row['hsl'] || row['law']
+            load = 0
+          else
+            load = 1
+          end
+          
+          pnames.split(";;;").each do |name|
+            if load == 1
+              @csv_pkg_data[name] = row['773title']
+            else
+              @csv_pkg_data[name] = "na"
+            end
+          end
         end
+
+        pkg_hash = {"known" => [], "new" => [], "no773" => []}
         
-        pkg_hash = {"known" => [], "new" => []}
-        
-        @mrc_pkg_names.each do |mrcname|
-          if @csv_pkg_names.include?(mrcname)
+        @mrc_pkg_names.each_key do |mrcname|
+          if @csv_pkg_data.key?(mrcname)
             pkg_hash["known"] << mrcname
+            unless @csv_pkg_data[mrcname]
+              pkg_hash["no773"] << mrcname
+            end
           else
             pkg_hash["new"] << mrcname
           end
@@ -115,14 +134,22 @@ class MainMenu
         if pkg_hash["new"].size > 0 
           pkg_hash["new"].sort!.each {|n| puts n}
         end
-        
+
+        puts "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-="
+        puts "KNOWN PACKAGES MISSING 773"
+        puts "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-="
+        puts "#{pkg_hash["no773"].size.to_s} known packages"
+        if pkg_hash["no773"].size > 0 
+          pkg_hash["no773"].sort!.each {|n| puts n}
+        end
+
         puts "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-="
         puts "KNOWN PACKAGES"
         puts "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-="
         puts "#{pkg_hash["known"].size.to_s} known packages"
-        if pkg_hash["known"].size > 0 
-          pkg_hash["known"].sort!.each {|n| puts n}
-        end
+         # if pkg_hash["known"].size > 0 
+         #   pkg_hash["known"].sort!.each {|n| puts n}
+         # end
         
         QuitOrMain.new
       end

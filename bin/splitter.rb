@@ -11,6 +11,9 @@ puts "the year = #{The_year}"
 puts "the month = #{The_month}"
 puts "the day = 01"
 
+#Create array to hold warnings to report at the end
+@warnings = []
+
 #Create lists of packages to load for each library
 @aal_load_pkgs = []
 @hsl_load_pkgs = []
@@ -48,11 +51,55 @@ exrec_data.each do |row|
   end 
 end
         
-#Setup input and output mrc files 
+#Setup input mrc files 
 addmrc = "data/ssmrc/orig/#{The_year}/#{The_year}#{The_month}01add.mrc"
 chmrc = "data/ssmrc/orig/#{The_year}/#{The_year}#{The_month}01change.mrc"
 delmrc = "data/ssmrc/orig/#{The_year}/#{The_year}#{The_month}01delete.mrc"
-       
+
+# PRE PROCESSING ALL INCOMING RECORDS
+# Add package name 773
+
+# Populate hash with all loaded package names and associated 773 titles
+pdata = CSV.read(Pkg_data, :headers => true)
+@h773 = {}
+pdata.each do |row|
+  pnames = row['name']
+  if row['773title'] != nil
+    pnames.split(";;;").each do |name|
+      @h773[name] = row['773title']
+    end
+  end
+end
+
+def add_773(file)
+  reader = MARC::Reader.new(file)
+  @recs = []
+  
+  reader.each do |rec|
+    pkg_names = rec.packages
+    pkg_names.each do |name| 
+      the_773 = @h773[name]
+      if the_773 != nil
+        rec.append(MARC::DataField.new( '773', '0', ' ', ['t', the_773]))
+      else
+        @warnings << "The package #{name} has no associated 773 value."
+      end
+    end
+    @recs << rec
+  end
+  writer = MARC::Writer.new(file)
+  @recs.each {|r| writer.write(r)}
+  writer.close
+end
+
+puts "Adding 773 to new records..."
+add_773(addmrc)
+puts "Adding 773 to change records..."
+add_773(chmrc)
+puts "Adding 773 to delete records..."
+add_773(delmrc)
+
+# Set up files and writers required for splitting
 aaladd = MARC::Writer.new("data/ssmrc/split_lib/#{The_year}#{The_month}01_aal_add.mrc")
 hsladd = MARC::Writer.new("data/ssmrc/split_lib/#{The_year}#{The_month}01_hsl_add.mrc")
 lawadd = MARC::Writer.new("data/ssmrc/split_lib/#{The_year}#{The_month}01_law_add.mrc")
@@ -205,43 +252,6 @@ hsldelete.close
 lawdelete.close
 nodelete.close
 
-# POST PROCESSING
-# AAL ADDS -- add package name 773
-
-# populate hash with AAL loaded package names and associated 773 titles
-pdata = CSV.read(Pkg_data, :headers => true)
-@h773 = {}
-pdata.each do |row|
-pnames = row['name']
-if row['aalload'] != nil
-  pnames.split(";;;").each do |name|
-    @h773[name] = row['773title']
-    #puts "#{name} => #{row['773title']}"
-  end
-end
-end
-
-def add_773(file)
-reader = MARC::Reader.new(file)
-@recs = []
-  
-reader.each do |rec|
-  pkg_names = rec.packages
-  pkg_names.each do |name| 
-    the_773 = @h773[name]
-    rec.append(MARC::DataField.new( '773', '0', ' ', ['t', the_773])) if the_773 != nil
-  end
-  @recs << rec
-end
-writer = MARC::Writer.new(file)
-@recs.each {|r| writer.write(r)}
-writer.close
-end
-
-add_773("data/ssmrc/split_lib/#{The_year}#{The_month}01_aal_add.mrc")
-add_773("data/ssmrc/split_lib/#{The_year}#{The_month}01_change.mrc")
-
-
 # Split HSL per package
 hsladds = MARC::Reader.new("data/ssmrc/split_lib/#{The_year}#{The_month}01_hsl_add.mrc")
 
@@ -268,3 +278,13 @@ end
   writer.close
 end
 
+@warnings.uniq!
+if @warnings.size > 0
+  puts "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-="
+  puts "WARNINGS"
+  puts "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-="
+
+  @warnings.uniq!.each do |w|
+    puts w
+  end
+end
