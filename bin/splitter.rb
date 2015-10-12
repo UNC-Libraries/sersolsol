@@ -26,16 +26,19 @@ pdata.each do |row|
   pnames = row['name']
   if row['aalload'] != nil
     dest = @aal_load_pkgs
-  elsif row['hsl'] != nil
+  elsif row['hslload'] != nil
     dest = @hsl_load_pkgs
-  elsif row['law'] != nil
+  elsif row['lawload'] != nil
     dest = @law_load_pkgs
   else
     dest = nil
   end
   pnames.split(";;;").each {|name| dest << name} if dest != nil
 end
-      
+
+@all_loaded_packages = @aal_load_pkgs + @hsl_load_pkgs + @law_load_pkgs
+@all_loaded_packages.flatten!
+
 # Create and populate hash of existing SerSol recs in Millennium
 exrec_data = CSV.read("data/mill_data.csv", :headers => true)
 @exrecs = {}
@@ -79,10 +82,12 @@ def add_773(file)
     pkg_names = rec.packages
     pkg_names.each do |name| 
       the_773 = @h773[name]
-      if the_773 != nil
-        rec.append(MARC::DataField.new( '773', '0', ' ', ['t', the_773]))
-      else
-        @warnings << "The package #{name} has no associated 773 value."
+      if @all_loaded_packages.include? name
+        if the_773 != nil
+          rec.append(MARC::DataField.new( '773', '0', ' ', ['t', the_773]))
+        else
+          @warnings << "The package #{name} has no associated 773 value."
+        end
       end
     end
     @recs << rec
@@ -284,7 +289,7 @@ if @warnings.size > 0
   puts "WARNINGS"
   puts "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-="
 
-  @warnings.uniq!.each do |w|
+  @warnings.each do |w|
     puts w
   end
 end
