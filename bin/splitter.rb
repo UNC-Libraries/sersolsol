@@ -18,10 +18,10 @@ puts "the day = 01"
 @aal_load_pkgs = []
 @hsl_load_pkgs = []
 @law_load_pkgs = []
-        
+
 #Populate lists of packages to load for each library
 pdata = CSV.read(Pkg_data, :headers => true)
-         
+
 pdata.each do |row|
   pnames = row['name']
   if row['aalload'] != nil
@@ -51,10 +51,10 @@ exrec_data.each do |row|
     @exrecs[ssid] = "law"
   else
     @exrecs[ssid] = "aal"
-  end 
+  end
 end
-        
-#Setup input mrc files 
+
+#Setup input mrc files
 addmrc = "data/ssmrc/orig/#{The_year}/#{The_year}#{The_month}01add.mrc"
 chmrc = "data/ssmrc/orig/#{The_year}/#{The_year}#{The_month}01change.mrc"
 delmrc = "data/ssmrc/orig/#{The_year}/#{The_year}#{The_month}01delete.mrc"
@@ -74,13 +74,93 @@ pdata.each do |row|
   end
 end
 
-def add_773(file)
+def edit_marc(file)
   reader = MARC::Reader.new(file)
   @recs = []
-  
   reader.each do |rec|
+
+    # Delete 020 |c or |9 and provide |q
+    @m020 = rec.fields("020")
+    if @m020.count > 0
+      @m020.each do |f|
+        @sfs = f.codes
+        exclude_sfs = ['c', '9']
+        has_bad = @sfs & exclude_sfs
+        if has_bad.count > 0
+          newfield = MARC::DataField.new(f.tag, f.indicator1, f.indicator2)
+          f.each do |sf|
+            if sf.code =~ /[^c9]/
+              newfield.append(MARC::Subfield.new(sf.code, sf.value))
+            end
+          end
+          rec.append(newfield)
+          rec.fields.delete(f)
+        end
+      end
+    end
+
+    # Delete |9 from 044
+    @m044 = rec.fields("044")
+    if @m044.count > 0
+      @m044.each do |f|
+        @sfs = f.codes
+        if @sfs.include? "9"
+          newfield = MARC::DataField.new(f.tag, f.indicator1, f.indicator2)
+          f.each do |sf|
+            if sf.code != "9"
+              newfield.append(MARC::Subfield.new(sf.code, sf.value))
+            end
+          end
+          rec.append(newfield) if @sfs.count > 1
+          rec.fields.delete(f)
+        end
+      end
+    end
+
+    # Delete $y from 1XX
+    @the1xx = rec.find_all {|field| field.tag =~ /^1../}
+    if @the1xx.count > 0
+      @the1xx.each do |f|
+        @sfs = f.codes
+        if @sfs.include? "y"
+          newfield = MARC::DataField.new(f.tag, f.indicator1, f.indicator2)
+          f.each do |sf|
+            if sf.code != "y"
+              newfield.append(MARC::Subfield.new(sf.code, sf.value))
+            end
+          end
+          rec.append(newfield)
+          rec.fields.delete(f)
+        end
+      end
+    end
+
+    # Split repeated 590|a into multiple fields
+    @m590 = rec.fields("590")
+    if @m590.count > 0
+      @m590.each do |f|
+        @sfs = []
+        f.subfields.each do |s|
+          @sfs << s.code
+        end
+        if @sfs.include? "a"
+          if @sfs.count("a") > 1
+            f.each do |sf|
+              if sf.code == "a"
+                newfield = MARC::DataField.new(f.tag, f.indicator1, f.indicator2)
+                newfield.append(MARC::Subfield.new(sf.code, sf.value))
+                rec.append(newfield)
+              end
+            end
+            rec.fields.delete(f)
+          end
+        end
+      end
+    end
+
+    # Add 773s
     pkg_names = rec.packages
-    pkg_names.each do |name| 
+    pkg_names.each do |name|
       the_773 = @h773[name]
       if @all_loaded_packages.include? name
         if the_773 != nil
@@ -90,19 +170,25 @@ def add_773(file)
         end
       end
     end
+
+
+
     @recs << rec
-  end
+  end #reader.each do |rec|
   writer = MARC::Writer.new(file)
   @recs.each {|r| writer.write(r)}
   writer.close
 end
 
 puts "Adding 773 to new records..."
-add_773(addmrc)
+edit_marc(addmrc)
 puts "Adding 773 to change records..."
-add_773(chmrc)
+edit_marc(chmrc)
 puts "Adding 773 to delete records..."
-add_773(delmrc)
+edit_marc(delmrc)
+
+# Delete $y from 100 fields
+
 
 # Set up files and writers required for splitting
 aaladd = MARC::Writer.new("data/ssmrc/split_lib/#{The_year}#{The_month}01_aal_add.mrc")
@@ -125,8 +211,8 @@ add_reader.each do |r|
   lawrec = 0
   hslrec = 0
   aalrec = 0
-  
-  pkg_names.each do |name| 
+
+  pkg_names.each do |name|
     if @law_load_pkgs.include?(name)
       lawrec = 1
     elsif @hsl_load_pkgs.include?(name)
@@ -135,7 +221,7 @@ add_reader.each do |r|
       aalrec = 1
     end
   end
-  
+
   if lawrec == 1
     lawadd.write(r)
   elsif hslrec == 1
@@ -146,7 +232,7 @@ add_reader.each do |r|
     noadd.write(r)
   end
 end
-        
+
 #Split change records into loaded and not loaded
 ch_reader = MARC::Reader.new(chmrc)
 @chloaded = []
@@ -155,18 +241,18 @@ ch_reader.each do |r|
   ssid = r['001'].value
   if @exrecs.has_key?(ssid)
     @chloaded << r
-    #puts "ssid #{ssid} found. moved to chloaded."
+  #puts "ssid #{ssid} found. moved to chloaded."
   else
     @chunloaded << r
     #puts "ssid #{ssid} not found. moved to chunloaded."
   end
 end
-        
+
 # Create list of all loaded packages
 @incat = @aal_load_pkgs + @hsl_load_pkgs + @law_load_pkgs
-        
+
 # PROCESS LOADED CHANGE RECORDS
-# Is record still in loaded package(s)? 
+# Is record still in loaded package(s)?
 # If so, write to change file.
 # If no, get location and write to its delete file.
 @chloaded.each do |r|
@@ -174,81 +260,81 @@ end
   hslrec = 0
   aalrec = 0
   chrec = 0
-  
+
   pkg_names = r.packages
-  pkg_names.each do |name| 
+  pkg_names.each do |name|
     chrec = 1 if @incat.include?(name)
   end
-    if chrec == 0
-      ssid = r['001'].value
-      lib = @exrecs[ssid]
-      aalrec = 1 if lib == "aal"
-      hslrec = 1 if lib == "hsl"
-      lawrec = 1 if lib == "law"
-    end
+  if chrec == 0
+    ssid = r['001'].value
+    lib = @exrecs[ssid]
+    aalrec = 1 if lib == "aal"
+    hslrec = 1 if lib == "hsl"
+    lawrec = 1 if lib == "law"
+  end
 
-  
-changes.write(r) if chrec == 1
-aaldelete.write(r) if aalrec == 1
-hsldelete.write(r) if hslrec == 1
-lawdelete.write(r) if lawrec == 1
+
+  changes.write(r) if chrec == 1
+  aaldelete.write(r) if aalrec == 1
+  hsldelete.write(r) if hslrec == 1
+  lawdelete.write(r) if lawrec == 1
 end
-        
+
 #PROCESS UNLOADED CHANGE RECORDS
 # Is record now in a loaded package (per library?)
 # If yes, write to library's add file
 @chunloaded.each do |r|
-pkg_names = r.packages
-lawrec = 0
-hslrec = 0
-aalrec = 0
-  
-pkg_names.each do |name| 
-  if @law_load_pkgs.include?(name)
-    lawrec = 1
-  elsif @hsl_load_pkgs.include?(name)
-    hslrec = 1
-  elsif @aal_load_pkgs.include?(name)
-    aalrec = 1
+  pkg_names = r.packages
+  lawrec = 0
+  hslrec = 0
+  aalrec = 0
+
+  pkg_names.each do |name|
+    if @law_load_pkgs.include?(name)
+      lawrec = 1
+    elsif @hsl_load_pkgs.include?(name)
+      hslrec = 1
+    elsif @aal_load_pkgs.include?(name)
+      aalrec = 1
+    end
+  end
+
+  if lawrec == 1
+    lawadd.write(r)
+  elsif hslrec == 1
+    hsladd.write(r)
+  elsif aalrec == 1
+    aaladd.write(r)
+  else
+    nochanges.write(r)
   end
 end
-  
-if lawrec == 1
-  lawadd.write(r)
-elsif hslrec == 1
-  hsladd.write(r)
-elsif aalrec == 1
-  aaladd.write(r)
-else
-  nochanges.write(r)
-end
-end
-        
-                
+
+
 #Gather loaded delete records
 del_reader = MARC::Reader.new(delmrc)
 @delloaded = []
 del_reader.each do |r|
-ssid = r['001'].value
-if @exrecs.has_key?(ssid)
-  @delloaded << r 
-else
-  nodelete.write(r)
+  ssid = r['001'].value
+  if @exrecs.has_key?(ssid)
+    @delloaded << r
+  else
+    nodelete.write(r)
+  end
 end
-end
-        
+
 # Split deleted records per library
 @delloaded.each do |r|
-ssid = r['001'].value
-lib = @exrecs[ssid]
-aaldelete.write(r) if lib == "aal"
-hsldelete.write(r) if lib == "hsl"
-lawdelete.write(r) if lib == "law"
+  ssid = r['001'].value
+  lib = @exrecs[ssid]
+  aaldelete.write(r) if lib == "aal"
+  hsldelete.write(r) if lib == "hsl"
+  lawdelete.write(r) if lib == "law"
 end
-        
+
 aaladd.close
 hsladd.close
-lawadd.close  
+lawadd.close
 noadd.close
 changes.close
 nochanges.close
