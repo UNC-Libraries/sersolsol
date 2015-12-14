@@ -117,8 +117,60 @@ def edit_marc(file)
       end
     end
 
-    # Delete $y from 1XX
-    @the1xx = rec.find_all {|field| field.tag =~ /^1../}
+        # Change 060 |i to |b
+    @m060 = rec.fields("060")
+    if @m060.count > 0
+      @m060.each do |f|
+        @sfs = f.codes
+        if @sfs.include? "i" 
+          newfield = MARC::DataField.new(f.tag, f.indicator1, f.indicator2)
+          f.each do |sf|
+            if sf.code != "9"
+              newfield.append(MARC::Subfield.new(sf.code, sf.value))
+            else
+              newfield.append(MARC::Subfield.new('b', sf.value))
+            end
+          end
+          rec.append(newfield)
+          rec.fields.delete(f)
+        end
+      end
+    end
+
+    # Move 088 |9 content to beginning of |a
+    @m088 = rec.fields("088")
+    if @m088.count > 0
+      @m088.each do |f|
+        @sfs = f.codes
+        if @sfs.include? "9" 
+          newfield = MARC::DataField.new(f.tag, f.indicator1, f.indicator2)
+          sfa = ""
+          sf9 = ""
+          other_sfs = []
+          f.each do |sf|
+            if sf.code == "a"
+              sfa = sf.value
+            elsif sf.code == '9'
+              sf9 = sf.value
+            else
+              other_sfs << sf
+            end
+          end
+          new_sfa = "#{sf9} #{sfa}"
+          newfield.append(MARC::Subfield.new('a', new_sfa))
+          if other_sfs.count > 0
+            other_sfs.each do |sf|
+              newfield.append(MARC::Subfield.new(sf.code, sf.value))
+            end
+          end
+          rec.append(newfield)
+          rec.fields.delete(f)
+        end
+      end
+    end
+
+    # Delete $y from 1XX, 240
+    @the1xx = rec.find_all {|field| field.tag =~ /^(1..|240)/}
     if @the1xx.count > 0
       @the1xx.each do |f|
         @sfs = f.codes
@@ -134,7 +186,7 @@ def edit_marc(file)
         end
       end
     end
-
+    
     # Split repeated 590|a into multiple fields
     @m590 = rec.fields("590")
     if @m590.count > 0
