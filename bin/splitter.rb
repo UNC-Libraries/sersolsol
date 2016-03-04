@@ -1,3 +1,4 @@
+require 'rubygems'
 require 'highline/import'
 require 'marc'
 require 'marc_sersol'
@@ -20,6 +21,7 @@ puts "the day = 01"
 @law_load_pkgs = []
 
 #Populate lists of packages to load for each library
+puts "Reading in SerialsSolutions package instructions..."
 pdata = CSV.read(Pkg_data, :headers => true)
 
 pdata.each do |row|
@@ -40,6 +42,7 @@ end
 @all_loaded_packages.flatten!
 
 # Create and populate hash of existing SerSol recs in Millennium
+puts "Reading in data on SerialsSolutions recs now in Millennium..."
 exrec_data = CSV.read("data/mill_data.csv", :headers => true)
 @exrecs = {}
 exrec_data.each do |row|
@@ -60,9 +63,10 @@ chmrc = "data/ssmrc/orig/#{The_year}/#{The_year}#{The_month}01change.mrc"
 delmrc = "data/ssmrc/orig/#{The_year}/#{The_year}#{The_month}01delete.mrc"
 
 # PRE PROCESSING ALL INCOMING RECORDS
-# Add package name 773
 
 # Populate hash with all loaded package names and associated 773 titles
+# So we can add package name 773
+puts "Assigning 773 value to each package..."
 pdata = CSV.read(Pkg_data, :headers => true)
 @h773 = {}
 pdata.each do |row|
@@ -74,173 +78,205 @@ pdata.each do |row|
   end
 end
 
-def edit_marc(file)
-  reader = MARC::Reader.new(file)
-  @recs = []
-  reader.each do |rec|
+# Populate hash with all loaded package names and associated 506s
+# So we can add package 506s
 
-    # Delete 020 |c or |9 and provide |q
-    @m020 = rec.fields("020")
-    if @m020.count > 0
-      @m020.each do |f|
-        @sfs = f.codes
-        exclude_sfs = ['c', '9']
-        has_bad = @sfs & exclude_sfs
-        if has_bad.count > 0
-          newfield = MARC::DataField.new(f.tag, f.indicator1, f.indicator2)
-          f.each do |sf|
-            if sf.code =~ /[^c9]/
-              newfield.append(MARC::Subfield.new(sf.code, sf.value))
-            end
-          end
-          rec.append(newfield)
-          rec.fields.delete(f)
-        end
-      end
+puts "Assigning 506$f value to each package..."
+pdata = CSV.read(Pkg_data, :headers => true)
+@h506 = {}
+pdata.each do |row|
+  pnames = row['name']
+  if row['506access'] != nil
+    pnames.split(";;;").each do |name|
+      @h506[name] = row['506access']
     end
-
-    # Delete |9 from 044
-    @m044 = rec.fields("044")
-    if @m044.count > 0
-      @m044.each do |f|
-        @sfs = f.codes
-        if @sfs.include? "9"
-          newfield = MARC::DataField.new(f.tag, f.indicator1, f.indicator2)
-          f.each do |sf|
-            if sf.code != "9"
-              newfield.append(MARC::Subfield.new(sf.code, sf.value))
-            end
-          end
-          rec.append(newfield) if @sfs.count > 1
-          rec.fields.delete(f)
-        end
-      end
-    end
-
-        # Change 060 |i to |b
-    @m060 = rec.fields("060")
-    if @m060.count > 0
-      @m060.each do |f|
-        @sfs = f.codes
-        if @sfs.include? "i" 
-          newfield = MARC::DataField.new(f.tag, f.indicator1, f.indicator2)
-          f.each do |sf|
-            if sf.code != "9"
-              newfield.append(MARC::Subfield.new(sf.code, sf.value))
-            else
-              newfield.append(MARC::Subfield.new('b', sf.value))
-            end
-          end
-          rec.append(newfield)
-          rec.fields.delete(f)
-        end
-      end
-    end
-
-    # Move 088 |9 content to beginning of |a
-    @m088 = rec.fields("088")
-    if @m088.count > 0
-      @m088.each do |f|
-        @sfs = f.codes
-        if @sfs.include? "9" 
-          newfield = MARC::DataField.new(f.tag, f.indicator1, f.indicator2)
-          sfa = ""
-          sf9 = ""
-          other_sfs = []
-          f.each do |sf|
-            if sf.code == "a"
-              sfa = sf.value
-            elsif sf.code == '9'
-              sf9 = sf.value
-            else
-              other_sfs << sf
-            end
-          end
-          new_sfa = "#{sf9} #{sfa}"
-          newfield.append(MARC::Subfield.new('a', new_sfa))
-          if other_sfs.count > 0
-            other_sfs.each do |sf|
-              newfield.append(MARC::Subfield.new(sf.code, sf.value))
-            end
-          end
-          rec.append(newfield)
-          rec.fields.delete(f)
-        end
-      end
-    end
-
-    # Delete $y from 1XX, 240
-    @the1xx = rec.find_all {|field| field.tag =~ /^(1..|240)/}
-    if @the1xx.count > 0
-      @the1xx.each do |f|
-        @sfs = f.codes
-        if @sfs.include? "y"
-          newfield = MARC::DataField.new(f.tag, f.indicator1, f.indicator2)
-          f.each do |sf|
-            if sf.code != "y"
-              newfield.append(MARC::Subfield.new(sf.code, sf.value))
-            end
-          end
-          rec.append(newfield)
-          rec.fields.delete(f)
-        end
-      end
-    end
-    
-    # Split repeated 590|a into multiple fields
-    @m590 = rec.fields("590")
-    if @m590.count > 0
-      @m590.each do |f|
-        @sfs = []
-        f.subfields.each do |s|
-          @sfs << s.code
-        end
-        if @sfs.include? "a"
-          if @sfs.count("a") > 1
-            f.each do |sf|
-              if sf.code == "a"
-                newfield = MARC::DataField.new(f.tag, f.indicator1, f.indicator2)
-                newfield.append(MARC::Subfield.new(sf.code, sf.value))
-                rec.append(newfield)
-              end
-            end
-            rec.fields.delete(f)
-          end
-        end
-      end
-    end
-
-    # Add 773s
-    pkg_names = rec.packages
-    pkg_names.each do |name|
-      the_773 = @h773[name]
-      if @all_loaded_packages.include? name
-        if the_773 != nil
-          rec.append(MARC::DataField.new( '773', '0', ' ', ['t', the_773]))
-        else
-          @warnings << "The package #{name} has no associated 773 value."
-        end
-      end
-    end
-
-
-
-    @recs << rec
-  end #reader.each do |rec|
-  writer = MARC::Writer.new(file)
-  @recs.each {|r| writer.write(r)}
-  writer.close
+  end
 end
 
-puts "Adding 773 to new records..."
-edit_marc(addmrc)
-puts "Adding 773 to change records..."
-edit_marc(chmrc)
-puts "Adding 773 to delete records..."
-edit_marc(delmrc)
+# Performs edits on the MARC::Record passed in
+# Returns the edited MARC::Record
+def edit_marc_rec(rec)
+  # This comes first because it is the most important part
+  # Add 773s and 506s
+  pkg_names = rec.packages
+  pkg_names.each do |name|
+    the_773 = @h773[name]
+    the_506f = @h506[name]
+    if @all_loaded_packages.include? name
+      # the 773 part
+      if the_773 != nil
+        rec.append(MARC::DataField.new( '773', '0', ' ', ['t', the_773]))
+      else
+        @warnings << "The package #{name} has no associated 773 value."
+      end
+      
+      if the_506f != nil
+        unless the_506f == "na varies per title"
+          rec.append(MARC::DataField.new( '506', '1', ' ', ['a', 'Access limited to UNC Chapel Hill-authenticated users.'], ['f', the_506f]))
+        end
+      else
+        @warnings << "The package #{name} has no associated 506f value."
+      end
+    end
+  end
 
-# Delete $y from 100 fields
+  # The rest of the edits are organized by MARC field
+  # 020 -- Delete 020 |c or |9 and provide |q
+  @m020 = rec.fields("020")
+  if @m020.count > 0
+    @m020.each do |f|
+      @sfs = f.codes
+      exclude_sfs = ['c', '9']
+      has_bad = @sfs & exclude_sfs
+      if has_bad.count > 0
+        newfield = MARC::DataField.new(f.tag, f.indicator1, f.indicator2)
+        f.each do |sf|
+          if sf.code =~ /[^c9]/
+            newfield.append(MARC::Subfield.new(sf.code, sf.value))
+          end
+        end
+        rec.append(newfield)
+        rec.fields.delete(f)
+      end
+    end
+  end
 
+  # Delete |9 from 044
+  @m044 = rec.fields("044")
+  if @m044.count > 0
+    @m044.each do |f|
+      @sfs = f.codes
+      if @sfs.include? "9"
+        newfield = MARC::DataField.new(f.tag, f.indicator1, f.indicator2)
+        f.each do |sf|
+          if sf.code != "9"
+            newfield.append(MARC::Subfield.new(sf.code, sf.value))
+          end
+        end
+        rec.append(newfield) if @sfs.count > 1
+        rec.fields.delete(f)
+      end
+    end
+  end
+
+  # Change 060 |i to |b
+  @m060 = rec.fields("060")
+  if @m060.count > 0
+    @m060.each do |f|
+      @sfs = f.codes
+      if @sfs.include? "i" 
+        newfield = MARC::DataField.new(f.tag, f.indicator1, f.indicator2)
+        f.each do |sf|
+          if sf.code != "9"
+            newfield.append(MARC::Subfield.new(sf.code, sf.value))
+          else
+            newfield.append(MARC::Subfield.new('b', sf.value))
+          end
+        end
+        rec.append(newfield)
+        rec.fields.delete(f)
+      end
+    end
+  end
+
+  # Move 088 |9 content to beginning of |a
+  @m088 = rec.fields("088")
+  if @m088.count > 0
+    @m088.each do |f|
+      @sfs = f.codes
+      if @sfs.include? "9" 
+        newfield = MARC::DataField.new(f.tag, f.indicator1, f.indicator2)
+        sfa = ""
+        sf9 = ""
+        other_sfs = []
+        f.each do |sf|
+          if sf.code == "a"
+            sfa = sf.value
+          elsif sf.code == '9'
+            sf9 = sf.value
+          else
+            other_sfs << sf
+          end
+        end
+        new_sfa = "#{sf9} #{sfa}"
+        newfield.append(MARC::Subfield.new('a', new_sfa))
+        if other_sfs.count > 0
+          other_sfs.each do |sf|
+            newfield.append(MARC::Subfield.new(sf.code, sf.value))
+          end
+        end
+        rec.append(newfield)
+        rec.fields.delete(f)
+      end
+    end
+  end
+
+  # Delete $y from 1XX, 240
+  @the1xx = rec.find_all {|field| field.tag =~ /^(1..|240)/}
+  if @the1xx.count > 0
+    @the1xx.each do |f|
+      @sfs = f.codes
+      if @sfs.include? "y"
+        newfield = MARC::DataField.new(f.tag, f.indicator1, f.indicator2)
+        f.each do |sf|
+          if sf.code != "y"
+            newfield.append(MARC::Subfield.new(sf.code, sf.value))
+          end
+        end
+        rec.append(newfield)
+        rec.fields.delete(f)
+      end
+    end
+  end
+  
+  # Split repeated 590|a into multiple fields
+  @m590 = rec.fields("590")
+  if @m590.count > 0
+    @m590.each do |f|
+      @sfs = []
+      f.subfields.each do |s|
+        @sfs << s.code
+      end
+      if @sfs.include? "a"
+        if @sfs.count("a") > 1
+          f.each do |sf|
+            if sf.code == "a"
+              newfield = MARC::DataField.new(f.tag, f.indicator1, f.indicator2)
+              newfield.append(MARC::Subfield.new(sf.code, sf.value))
+              rec.append(newfield)
+            end
+          end
+          rec.fields.delete(f)
+        end
+      end
+    end
+  end
+
+  # 710s - delete some 710s:
+  rec.each_by_tag("710") do |m710|
+    deleteme = "no"
+    sfa = m710.find_all {|sf| sf.code == 'a'}
+    sfa.each do |sf|
+      deleteme = "yes" if /^SpringerLink \(Online service\).? */ =~ sf.value
+      deleteme = "yes" if /^Springer Science+Business Media.? */ =~ sf.value
+    end
+    rec.fields.delete(m710) if deleteme == "yes"
+  end
+  
+  # 773s - delete some 773s:
+  rec.each_by_tag("773") do |m773|
+    deleteme = "no"
+    sft = m773.find_all {|sf| sf.code == 't'}
+    sft.each do |sf|
+      deleteme = "yes" if /^ACLS Humanities E-Book.? *$/ =~ sf.value
+      deleteme = "yes" if /^Engineering Societies Library Collection \(Library of Congress\) *$/ =~ sf.value
+      deleteme = "yes" if /^Springer eBooks *$/ =~ sf.value
+    end
+    rec.fields.delete(m773) if deleteme == "yes"
+  end
+  
+  return rec
+end
 
 # Set up files and writers required for splitting
 aaladd = MARC::Writer.new("data/ssmrc/split_lib/#{The_year}#{The_month}01_aal_add.mrc")
@@ -257,6 +293,7 @@ lawdelete = MARC::Writer.new("data/ssmrc/split_lib/#{The_year}#{The_month}01_law
 nodelete = MARC::Writer.new("data/ssmrc/split_lib/#{The_year}#{The_month}01_NO_delete.mrc")
 
 # Split add records
+puts "Processing add file..."
 add_reader = MARC::Reader.new(addmrc)
 add_reader.each do |r|
   pkg_names = r.packages
@@ -275,17 +312,18 @@ add_reader.each do |r|
   end
 
   if lawrec == 1
-    lawadd.write(r)
+    lawadd.write(edit_marc_rec(r))
   elsif hslrec == 1
-    hsladd.write(r)
+    hsladd.write(edit_marc_rec(r))
   elsif aalrec == 1
-    aaladd.write(r)
+    aaladd.write(edit_marc_rec(r))
   else
     noadd.write(r)
   end
 end
 
 #Split change records into loaded and not loaded
+puts "Processing change file..."
 ch_reader = MARC::Reader.new(chmrc)
 @chloaded = []
 @chunloaded = []
@@ -326,10 +364,10 @@ end
   end
 
 
-  changes.write(r) if chrec == 1
-  aaldelete.write(r) if aalrec == 1
-  hsldelete.write(r) if hslrec == 1
-  lawdelete.write(r) if lawrec == 1
+  changes.write(edit_marc_rec(r)) if chrec == 1
+  aaldelete.write(edit_marc_rec(r)) if aalrec == 1
+  hsldelete.write(edit_marc_rec(r)) if hslrec == 1
+  lawdelete.write(edit_marc_rec(r)) if lawrec == 1
 end
 
 #PROCESS UNLOADED CHANGE RECORDS
@@ -352,11 +390,11 @@ end
   end
 
   if lawrec == 1
-    lawadd.write(r)
+    lawadd.write(edit_marc_rec(r))
   elsif hslrec == 1
-    hsladd.write(r)
+    hsladd.write(edit_marc_rec(r))
   elsif aalrec == 1
-    aaladd.write(r)
+    aaladd.write(edit_marc_rec(r))
   else
     nochanges.write(r)
   end
@@ -364,6 +402,7 @@ end
 
 
 #Gather loaded delete records
+puts "Processing delete file..."
 del_reader = MARC::Reader.new(delmrc)
 @delloaded = []
 del_reader.each do |r|
@@ -396,6 +435,7 @@ lawdelete.close
 nodelete.close
 
 # Split HSL per package
+puts "Splitting HSL adds into separate files per package..."
 hsladds = MARC::Reader.new("data/ssmrc/split_lib/#{The_year}#{The_month}01_hsl_add.mrc")
 
 @hsltowrite = {}
@@ -420,6 +460,8 @@ end
   v.each {|r| writer.write(r)}
   writer.close
 end
+
+puts "Done!"
 
 @warnings.uniq!
 if @warnings.size > 0
