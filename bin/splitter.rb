@@ -135,7 +135,7 @@ def edit_marc_rec(rec)
             newfield.append(MARC::Subfield.new(sf.code, sf.value))
           end
         end
-        rec.append(newfield)
+        rec.append(newfield) unless has_bad.count == @sfs.count
         rec.fields.delete(f)
       end
     end
@@ -293,134 +293,139 @@ lawdelete = MARC::Writer.new("data/ssmrc/split_lib/#{The_year}#{The_month}01_law
 nodelete = MARC::Writer.new("data/ssmrc/split_lib/#{The_year}#{The_month}01_NO_delete.mrc")
 
 # Split add records
-puts "Processing add file..."
-add_reader = MARC::Reader.new(addmrc)
-add_reader.each do |r|
-  pkg_names = r.packages
-  lawrec = 0
-  hslrec = 0
-  aalrec = 0
+if File.file?(addmrc)
+  puts "Processing add file..."
+  add_reader = MARC::Reader.new(addmrc)
+  add_reader.each do |r|
+    pkg_names = r.packages
+    lawrec = 0
+    hslrec = 0
+    aalrec = 0
 
-  pkg_names.each do |name|
-    if @law_load_pkgs.include?(name)
-      lawrec = 1
-    elsif @hsl_load_pkgs.include?(name)
-      hslrec = 1
-    elsif @aal_load_pkgs.include?(name)
-      aalrec = 1
+    pkg_names.each do |name|
+      if @law_load_pkgs.include?(name)
+        lawrec = 1
+      elsif @hsl_load_pkgs.include?(name)
+        hslrec = 1
+      elsif @aal_load_pkgs.include?(name)
+        aalrec = 1
+      end
     end
-  end
 
-  if lawrec == 1
-    lawadd.write(edit_marc_rec(r))
-  elsif hslrec == 1
-    hsladd.write(edit_marc_rec(r))
-  elsif aalrec == 1
-    aaladd.write(edit_marc_rec(r))
-  else
-    noadd.write(r)
+    if lawrec == 1
+      lawadd.write(edit_marc_rec(r))
+    elsif hslrec == 1
+      hsladd.write(edit_marc_rec(r))
+    elsif aalrec == 1
+      aaladd.write(edit_marc_rec(r))
+    else
+      noadd.write(r)
+    end
   end
 end
 
 #Split change records into loaded and not loaded
-puts "Processing change file..."
-ch_reader = MARC::Reader.new(chmrc)
-@chloaded = []
-@chunloaded = []
-ch_reader.each do |r|
-  ssid = r['001'].value
-  if @exrecs.has_key?(ssid)
-    @chloaded << r
-  #puts "ssid #{ssid} found. moved to chloaded."
-  else
-    @chunloaded << r
-    #puts "ssid #{ssid} not found. moved to chunloaded."
-  end
-end
-
-# Create list of all loaded packages
-@incat = @aal_load_pkgs + @hsl_load_pkgs + @law_load_pkgs
-
-# PROCESS LOADED CHANGE RECORDS
-# Is record still in loaded package(s)?
-# If so, write to change file.
-# If no, get location and write to its delete file.
-@chloaded.each do |r|
-  lawrec = 0
-  hslrec = 0
-  aalrec = 0
-  chrec = 0
-
-  pkg_names = r.packages
-  pkg_names.each do |name|
-    chrec = 1 if @incat.include?(name)
-  end
-  if chrec == 0
+if File.file?(chmrc)
+  puts "Processing change file..."
+  ch_reader = MARC::Reader.new(chmrc)
+  @chloaded = []
+  @chunloaded = []
+  ch_reader.each do |r|
     ssid = r['001'].value
-    lib = @exrecs[ssid]
-    aalrec = 1 if lib == "aal"
-    hslrec = 1 if lib == "hsl"
-    lawrec = 1 if lib == "law"
-  end
-
-
-  changes.write(edit_marc_rec(r)) if chrec == 1
-  aaldelete.write(edit_marc_rec(r)) if aalrec == 1
-  hsldelete.write(edit_marc_rec(r)) if hslrec == 1
-  lawdelete.write(edit_marc_rec(r)) if lawrec == 1
-end
-
-#PROCESS UNLOADED CHANGE RECORDS
-# Is record now in a loaded package (per library?)
-# If yes, write to library's add file
-@chunloaded.each do |r|
-  pkg_names = r.packages
-  lawrec = 0
-  hslrec = 0
-  aalrec = 0
-
-  pkg_names.each do |name|
-    if @law_load_pkgs.include?(name)
-      lawrec = 1
-    elsif @hsl_load_pkgs.include?(name)
-      hslrec = 1
-    elsif @aal_load_pkgs.include?(name)
-      aalrec = 1
+    if @exrecs.has_key?(ssid)
+      @chloaded << r
+    #puts "ssid #{ssid} found. moved to chloaded."
+    else
+      @chunloaded << r
+      #puts "ssid #{ssid} not found. moved to chunloaded."
     end
   end
 
-  if lawrec == 1
-    lawadd.write(edit_marc_rec(r))
-  elsif hslrec == 1
-    hsladd.write(edit_marc_rec(r))
-  elsif aalrec == 1
-    aaladd.write(edit_marc_rec(r))
-  else
-    nochanges.write(r)
+  # Create list of all loaded packages
+  @incat = @aal_load_pkgs + @hsl_load_pkgs + @law_load_pkgs
+
+  # PROCESS LOADED CHANGE RECORDS
+  # Is record still in loaded package(s)?
+  # If so, write to change file.
+  # If no, get location and write to its delete file.
+  @chloaded.each do |r|
+    lawrec = 0
+    hslrec = 0
+    aalrec = 0
+    chrec = 0
+
+    pkg_names = r.packages
+    pkg_names.each do |name|
+      chrec = 1 if @incat.include?(name)
+    end
+    if chrec == 0
+      ssid = r['001'].value
+      lib = @exrecs[ssid]
+      aalrec = 1 if lib == "aal"
+      hslrec = 1 if lib == "hsl"
+      lawrec = 1 if lib == "law"
+    end
+
+
+    changes.write(edit_marc_rec(r)) if chrec == 1
+    aaldelete.write(edit_marc_rec(r)) if aalrec == 1
+    hsldelete.write(edit_marc_rec(r)) if hslrec == 1
+    lawdelete.write(edit_marc_rec(r)) if lawrec == 1
+  end
+
+  #PROCESS UNLOADED CHANGE RECORDS
+  # Is record now in a loaded package (per library?)
+  # If yes, write to library's add file
+  @chunloaded.each do |r|
+    pkg_names = r.packages
+    lawrec = 0
+    hslrec = 0
+    aalrec = 0
+
+    pkg_names.each do |name|
+      if @law_load_pkgs.include?(name)
+        lawrec = 1
+      elsif @hsl_load_pkgs.include?(name)
+        hslrec = 1
+      elsif @aal_load_pkgs.include?(name)
+        aalrec = 1
+      end
+    end
+
+    if lawrec == 1
+      lawadd.write(edit_marc_rec(r))
+    elsif hslrec == 1
+      hsladd.write(edit_marc_rec(r))
+    elsif aalrec == 1
+      aaladd.write(edit_marc_rec(r))
+    else
+      nochanges.write(r)
+    end
   end
 end
-
 
 #Gather loaded delete records
-puts "Processing delete file..."
-del_reader = MARC::Reader.new(delmrc)
-@delloaded = []
-del_reader.each do |r|
-  ssid = r['001'].value
-  if @exrecs.has_key?(ssid)
-    @delloaded << r
-  else
-    nodelete.write(r)
+if File.file?(delmrc)
+  puts "Processing delete file..."
+  del_reader = MARC::Reader.new(delmrc)
+  @delloaded = []
+  del_reader.each do |r|
+    ssid = r['001'].value
+    if @exrecs.has_key?(ssid)
+      @delloaded << r
+    else
+      nodelete.write(r)
+    end
   end
-end
 
-# Split deleted records per library
-@delloaded.each do |r|
-  ssid = r['001'].value
-  lib = @exrecs[ssid]
-  aaldelete.write(r) if lib == "aal"
-  hsldelete.write(r) if lib == "hsl"
-  lawdelete.write(r) if lib == "law"
+  # Split deleted records per library
+  @delloaded.each do |r|
+    ssid = r['001'].value
+    lib = @exrecs[ssid]
+    aaldelete.write(r) if lib == "aal"
+    hsldelete.write(r) if lib == "hsl"
+    lawdelete.write(r) if lib == "law"
+  end
 end
 
 aaladd.close
