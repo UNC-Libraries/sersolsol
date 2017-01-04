@@ -1,6 +1,14 @@
 # sersolsol
 **local processing for SerSol ebook MARC**
 
+=Disclaimers/caveats=
+The entire setup/design of this code is so specific to our library that no one else would be able to use it without major changes. 
+
+This was my very first programming project and I'd do a lot of it differently now, but there's never time to go back and rebuild from scratch. 
+
+However, this is offered here in case pieces of it are useful for other libraries that want to do some more-or-less automated processing of SerialsSolutions (or other) MARC records. 
+
+=Scope/purpose of scripts=
 Initial purpose for script was two-fold: 
 - for reasons, we would unavoidably be receiving some ebook MARC that we didn't actually want to load in our ILS. We needed to get rid of those records from the files we'd eventually process and load
 - we have 3 accounting units that like to handle ebook records differently (major difference: whether item or holdings records are attached to the bibs, and the coding in those attached records), which meant we wanted to let each unit load the records for their ebook packages. But since we all use the same SerialsSolutions account, we just receive one big set of files for all of us. Needed to split the adds/deletes up per accounting unit. (Changes are loaded in a way that doesn't affect any units' idiosyncracies).
@@ -16,6 +24,7 @@ Scripts we actually use:
 - bin/monthly_processing.rb
 - bin/splitter.rb
 
+=Usage=
 See SerSolSol_script_workflow.pdf for our step-by-step monthly process for using the scripts. Highly local process, but hopefully gives the basic idea of how this is used. 
 
 Assumes that there is a data directory at the same level as the bin directory, with the following structure: 
