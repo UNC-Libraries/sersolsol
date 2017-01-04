@@ -25,7 +25,7 @@ Scripts we actually use:
 - bin/splitter.rb
 
 #Usage#
-See SerSolSol_script_workflow.pdf for our step-by-step monthly process for using the scripts. Highly local process, but hopefully gives the basic idea of how this is used. 
+See **SerSolSol_script_workflow.pdf** for our step-by-step monthly process for using the scripts. Highly local process, but hopefully gives the basic idea of how this is used. 
 
 Assumes that there is a data directory at the same level as the bin directory, with the following structure: 
 <pre>- data
