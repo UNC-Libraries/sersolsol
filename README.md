@@ -20,15 +20,15 @@ See SerSolSol_script_workflow.pdf for our step-by-step monthly process for using
 
 Assumes that there is a data directory at the same level as the bin directory, with the following structure: 
 - data
--- ssmrc
---- orig
----- 2016
----- 2017
---- split_lib
---- split_load
---- split_pkg
--- mill_data.csv
--- pkg_list.csv
+ - ssmrc
+  - orig
+   - 2016
+   - 2017
+  - split_lib
+  - split_load
+  - split_pkg
+ - mill_data.csv
+ - pkg_list.csv
 
 **mill_data.csv** = list of 001 values and locations for SerialsSolutions bibs from ILS
 
