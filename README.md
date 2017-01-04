@@ -16,7 +16,16 @@ Initial purpose for script was two-fold:
 Over time, the following behavior has been added: 
 - Add 773 field with locally-established collection name for each package 
 - Add 506 field specifying number of concurrent users for each package (where the concurrent users is the same for the whole package)
-- Cleaning up/fixing some invalid MARC coding or other weird little things in the MARC that SerialsSolutions has not been able/willing to fix
+- Cleaning up/fixing some invalid MARC coding or other weird little things in the MARC that SerialsSolutions has not been able/willing to fix:
+ - delete $c and $9 from 020
+ - if the only subfields in 020 were $c and/or $9, delete the useless 020
+ - Delete |9 from 044
+ - Change 060 |i to |b
+ - Move 088 |9 content to beginning of |a
+ - Delete $y from 1XX, 240
+ - Split repeated 590|a into multiple fields
+ - Delete 710s for some known ebook providers
+ - Delete 773s for some ebook collections (773s we didn't add!)
 
 This was originally a much more ambitious project than it ended up becoming. A lot of the old files/starts at more advanced features are still in the code because cleaning it out hasn't been the highest priority. 
 
