@@ -16,7 +16,7 @@ Initial purpose for script was two-fold:
 Over time, the following behavior has been added: 
 - Add 773 field with locally-established collection name for each package 
 - Add 506 field specifying number of concurrent users for each package (where the concurrent users is the same for the whole package)
-- Cleaning up/fixing some invalid MARC coding or other weird little things in the MARC that SerialsSolutions has not been able/willing to fix:
+- Cleaning up/fixing some invalid MARC coding or other weird little things in the MARC that SerialsSolutions has not been able/willing to fix (or that we didn't report because it's more a local issue/preference):
  - delete $c and $9 from 020
  - if the only subfields in 020 were $c and/or $9, delete the useless 020
  - Delete |9 from 044
