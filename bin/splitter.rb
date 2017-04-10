@@ -47,7 +47,7 @@ exrec_data = CSV.read("data/mill_data.csv", :headers => true)
 @exrecs = {}
 exrec_data.each do |row|
   ssid = row['1']
-  loc = row['LOCATION']
+  loc = row['Location']
   if loc.include?("noh")
     @exrecs[ssid] = "hsl"
   elsif loc.include?("k")
