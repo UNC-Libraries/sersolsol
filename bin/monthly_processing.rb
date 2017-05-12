@@ -99,16 +99,17 @@ class MainMenu
         
         pdata.each do |row|
           pnames = row['name']
-          unless row['aalload'] || row['hsl'] || row['law']
-            load = 0
-          else
+          if row['aalload'] || row['hslload'] || row['lawload']
             load = 1
+          else
+            load = 0
           end
           
           pnames.split(";;;").each do |name|
             if load == 1
               @csv_pkg_data[name] = row['773title']
             else
+              # we're not loading this, so we don't care if 773 exists
               @csv_pkg_data[name] = "na"
             end
           end

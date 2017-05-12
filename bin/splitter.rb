@@ -43,17 +43,22 @@ end
 
 # Create and populate hash of existing SerSol recs in Millennium
 puts "Reading in data on SerialsSolutions recs now in Millennium..."
-exrec_data = CSV.read("data/mill_data.csv", :headers => true)
+exrec_data = CSV.read("data/mill_data.txt",
+                      :headers => true,
+                      :col_sep => "\t",
+                      :quote_char => "\x00")
 @exrecs = {}
 exrec_data.each do |row|
-  ssid = row['1']
+  ssid = row['001']
   loc = row['Location']
+  bnum = row['Record Number']
+  @exrecs[ssid] = { 'bnum' => bnum }
   if loc.include?("noh")
-    @exrecs[ssid] = "hsl"
+    @exrecs[ssid]['loc'] = "hsl"
   elsif loc.include?("k")
-    @exrecs[ssid] = "law"
+    @exrecs[ssid]['loc'] = "law"
   else
-    @exrecs[ssid] = "aal"
+    @exrecs[ssid]['loc'] = "aal"
   end
 end
 
@@ -292,6 +297,10 @@ hsldelete = MARC::Writer.new("data/ssmrc/split_lib/#{The_year}#{The_month}01_hsl
 lawdelete = MARC::Writer.new("data/ssmrc/split_lib/#{The_year}#{The_month}01_law_delete.mrc")
 nodelete = MARC::Writer.new("data/ssmrc/split_lib/#{The_year}#{The_month}01_NO_delete.mrc")
 
+aaldel_bnums = File.open("data/ssmrc/split_lib/#{The_year}#{The_month}01_aal_del_bnums.txt", "w")
+hsldel_bnums = File.open("data/ssmrc/split_lib/#{The_year}#{The_month}01_hsl_del_bnums.txt", "w")
+lawdel_bnums = File.open("data/ssmrc/split_lib/#{The_year}#{The_month}01_law_del_bnums.txt", "w")
+
 # Split add records
 if File.file?(addmrc)
   puts "Processing add file..."
@@ -349,28 +358,30 @@ if File.file?(chmrc)
   # If so, write to change file.
   # If no, get location and write to its delete file.
   @chloaded.each do |r|
-    lawrec = 0
-    hslrec = 0
-    aalrec = 0
     chrec = 0
 
     pkg_names = r.packages
     pkg_names.each do |name|
       chrec = 1 if @incat.include?(name)
     end
-    if chrec == 0
+    if chrec == 1
+      changes.write(edit_marc_rec(r))
+    elsif chrec == 0
       ssid = r['001'].value
-      lib = @exrecs[ssid]
-      aalrec = 1 if lib == "aal"
-      hslrec = 1 if lib == "hsl"
-      lawrec = 1 if lib == "law"
+      lib = @exrecs[ssid]['loc']
+      bnum = @exrecs[ssid]['bnum']
+      case lib
+      when "aal"
+        aaldelete.write(edit_marc_rec(r))
+        aaldel_bnums.write(bnum + "\n")
+      when "hsl"
+        hsldelete.write(edit_marc_rec(r))
+        hsldel_bnums.write(bnum + "\n")
+      when "law"
+        lawdelete.write(edit_marc_rec(r))
+        lawdel_bnums.write(bnum + "\n")
+      end
     end
-
-
-    changes.write(edit_marc_rec(r)) if chrec == 1
-    aaldelete.write(edit_marc_rec(r)) if aalrec == 1
-    hsldelete.write(edit_marc_rec(r)) if hslrec == 1
-    lawdelete.write(edit_marc_rec(r)) if lawrec == 1
   end
 
   #PROCESS UNLOADED CHANGE RECORDS
@@ -421,10 +432,22 @@ if File.file?(delmrc)
   # Split deleted records per library
   @delloaded.each do |r|
     ssid = r['001'].value
-    lib = @exrecs[ssid]
-    aaldelete.write(r) if lib == "aal"
-    hsldelete.write(r) if lib == "hsl"
-    lawdelete.write(r) if lib == "law"
+    lib = @exrecs[ssid]['loc']
+    bnum = @exrecs[ssid]['bnum']
+    case lib
+      # we don't 'need' to edit these MARC records, but doing so gives
+      # us 773s in the delete files; write unedited marc if this causes
+      # problems
+      when "aal"
+        aaldelete.write(edit_marc_rec(r))
+        aaldel_bnums.write(bnum + "\n")
+      when "hsl"
+        hsldelete.write(edit_marc_rec(r))
+        hsldel_bnums.write(bnum + "\n")
+      when "law"
+        lawdelete.write(edit_marc_rec(r))
+        lawdel_bnums.write(bnum + "\n")
+      end
   end
 end
 
@@ -438,6 +461,9 @@ aaldelete.close
 hsldelete.close
 lawdelete.close
 nodelete.close
+aaldel_bnums.close
+hsldel_bnums.close
+lawdel_bnums.close
 
 # Split HSL per package
 puts "Splitting HSL adds into separate files per package..."
@@ -464,6 +490,30 @@ end
   writer = MARC::Writer.new(file)
   v.each {|r| writer.write(r)}
   writer.close
+end
+
+# Generate summary count of deleted records by 773
+del_mrcs = ["data/ssmrc/split_lib/#{The_year}#{The_month}01_aal_delete.mrc",
+"data/ssmrc/split_lib/#{The_year}#{The_month}01_hsl_delete.mrc",
+"data/ssmrc/split_lib/#{The_year}#{The_month}01_law_delete.mrc"]
+del_mrcs.each do |mrc_path|
+  next if !File.file?(mrc_path)
+  summary_path = mrc_path.gsub("_delete.mrc", "_del_summary.txt")
+  m773s = []
+  reader = MARC::Reader.new(mrc_path)
+  reader.each do |rec|
+    rec.each_by_tag("773") do |m773|
+      sft = m773.find_all {|sf| sf.code == 't'}
+      sft.each do |sf|
+        m773s << sf.value
+      end
+    end
+  end
+  # generate arr of 773s, counts; sorted by count descending
+  summary = m773s.group_by{ |x| x }.map{ |k, v| [k, v.length] }.sort_by{ |x| [-x[1], x[0]] }
+  File.open(summary_path, 'w') do |file|
+    summary.each { |m773_count| file << m773_count.join("\t") + "\n" }
+  end
 end
 
 puts "Done!"

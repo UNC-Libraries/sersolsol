@@ -1,4 +1,6 @@
 data/*.txt
+# allow data/mill_data.txt in to replace mill_data.csv
+!data/mill_data.txt
 data/ssmrc
 output/
 *.xlsx

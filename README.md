@@ -34,8 +34,6 @@ Scripts we actually use:
 - bin/splitter.rb
 
 #Usage#
-See **SerSolSol_script_workflow.pdf** for our step-by-step monthly process for using the scripts. Highly local process, but hopefully gives the basic idea of how this is used. 
-
 Assumes that there is a data directory at the same level as the bin directory, with the following structure: 
 <pre>- data
 -- ssmrc
@@ -45,10 +43,10 @@ Assumes that there is a data directory at the same level as the bin directory, w
 --- split_lib
 --- split_load
 --- split_pkg
--- mill_data.csv
+-- mill_data.txt
 -- pkg_list.csv</pre>
 
-**mill_data.csv** = list of 001 values and locations for SerialsSolutions bibs from ILS
+**mill_data.txt** = list of bib record numbers, 001 values, and locations for SerialsSolutions bibs from ILS
 
 **pkg_list.csv** = list of known packages, specifiying for each: 
 - whether MARC should be processed/loaded
