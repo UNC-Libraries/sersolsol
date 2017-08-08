@@ -50,8 +50,8 @@ exrec_data = CSV.read("data/mill_data.txt",
 @exrecs = {}
 exrec_data.each do |row|
   ssid = row['001']
-  loc = row['Location']
-  bnum = row['Record Number']
+  loc = row['LOCATION']
+  bnum = row['RECORD #(BIBLIO)']
   @exrecs[ssid] = { 'bnum' => bnum }
   if loc.include?("noh")
     @exrecs[ssid]['loc'] = "hsl"
