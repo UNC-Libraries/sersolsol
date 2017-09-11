@@ -117,7 +117,11 @@ def edit_marc_rec(rec)
       
       if the_506f != nil
         unless the_506f == "na varies per title"
-          rec.append(MARC::DataField.new( '506', '1', ' ', ['a', 'Access limited to UNC Chapel Hill-authenticated users.'], ['f', the_506f]))
+          if the_506f.downcase == "open access"
+            rec.append(MARC::DataField.new( '506', '0', ' ', ['f', 'Unlimited simultaneous users']))
+          else
+            rec.append(MARC::DataField.new( '506', '1', ' ', ['a', 'Access limited to UNC Chapel Hill-authenticated users.'], ['f', the_506f]))
+          end
         end
       else
         @warnings << "The package #{name} has no associated 506f value."
