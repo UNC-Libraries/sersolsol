@@ -114,7 +114,7 @@ def edit_marc_rec(rec)
       else
         @warnings << "The package #{name} has no associated 773 value."
       end
-      
+
       if the_506f != nil
         unless the_506f == "na varies per title"
           if the_506f.downcase == "open access"
@@ -173,7 +173,7 @@ def edit_marc_rec(rec)
   if @m060.count > 0
     @m060.each do |f|
       @sfs = f.codes
-      if @sfs.include? "i" 
+      if @sfs.include? "i"
         newfield = MARC::DataField.new(f.tag, f.indicator1, f.indicator2)
         f.each do |sf|
           if sf.code != "9"
@@ -193,7 +193,7 @@ def edit_marc_rec(rec)
   if @m088.count > 0
     @m088.each do |f|
       @sfs = f.codes
-      if @sfs.include? "9" 
+      if @sfs.include? "9"
         newfield = MARC::DataField.new(f.tag, f.indicator1, f.indicator2)
         sfa = ""
         sf9 = ""
@@ -237,7 +237,7 @@ def edit_marc_rec(rec)
       end
     end
   end
-  
+
   # Split repeated 590|a into multiple fields
   @m590 = rec.fields("590")
   if @m590.count > 0
@@ -261,6 +261,23 @@ def edit_marc_rec(rec)
     end
   end
 
+  # Set indicators/syntax for our custom 590s
+  rec.each_by_tag("590") do |m590|
+    next unless m590.indicator1 = ' '
+    if m590["a"] =~ /^Provider: /
+      m590.indicator1 = '0'
+      m590["a"].gsub!(/^Provider: /, 'Content provider: ')
+      m590["a"] << '.' unless m590["a"][-1] == '.'
+    elsif m590["a"] =~ /^Vendor.supplied/
+      m590.indicator1 = '1'
+      m590["a"].gsub!(/^Vendor.supplied/, 'Vendor-supplied')
+    end
+  end
+
+
+
+
+
   # 710s - delete some 710s:
   rec.each_by_tag("710") do |m710|
     deleteme = "no"
@@ -271,7 +288,7 @@ def edit_marc_rec(rec)
     end
     rec.fields.delete(m710) if deleteme == "yes"
   end
-  
+
   # 773s - delete some 773s:
   rec.each_by_tag("773") do |m773|
     deleteme = "no"
@@ -283,7 +300,7 @@ def edit_marc_rec(rec)
     end
     rec.fields.delete(m773) if deleteme == "yes"
   end
-  
+
   return rec
 end
 
