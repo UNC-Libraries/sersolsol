@@ -263,7 +263,7 @@ def edit_marc_rec(rec)
 
   # Set indicators/syntax for our custom 590s
   rec.each_by_tag("590") do |m590|
-    next unless m590.indicator1 = ' '
+    next unless m590.indicator1 == ' '
     if m590["a"] =~ /^Provider: /
       m590.indicator1 = '0'
       m590["a"].gsub!(/^Provider: /, 'Content provider: ')
@@ -456,19 +456,19 @@ if File.file?(delmrc)
     lib = @exrecs[ssid]['loc']
     bnum = @exrecs[ssid]['bnum']
     case lib
-      # we don't 'need' to edit these MARC records, but doing so gives
-      # us 773s in the delete files; write unedited marc if this causes
-      # problems
-      when "aal"
-        aaldelete.write(edit_marc_rec(r))
-        aaldel_bnums.write(bnum + "\n")
-      when "hsl"
-        hsldelete.write(edit_marc_rec(r))
-        hsldel_bnums.write(bnum + "\n")
-      when "law"
-        lawdelete.write(edit_marc_rec(r))
-        lawdel_bnums.write(bnum + "\n")
-      end
+    # we don't 'need' to edit these MARC records, but doing so gives
+    # us 773s in the delete files; write unedited marc if this causes
+    # problems
+    when "aal"
+      aaldelete.write(edit_marc_rec(r))
+      aaldel_bnums.write(bnum + "\n")
+    when "hsl"
+      hsldelete.write(edit_marc_rec(r))
+      hsldel_bnums.write(bnum + "\n")
+    when "law"
+      lawdelete.write(edit_marc_rec(r))
+      lawdel_bnums.write(bnum + "\n")
+    end
   end
 end
 
