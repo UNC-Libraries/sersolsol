@@ -104,6 +104,22 @@ def edit_marc_rec(rec)
   # This comes first because it is the most important part
   # Add 773s and 506s
   pkg_names = rec.packages
+
+  # if a record's packages have distinct 506f's, set a flag to write
+  # the package name to subfield 3 for each 506. We don't want to write
+  # extra 506s for packages we're dropping (due to quality/dupe/whatever), so
+  # first exlcude any packages without a 773.
+  package_506_ct = pkg_names.reject { |n| @h773[n].nil? }.
+                             map { |n| @h506[n] }.
+                             uniq.
+                             length
+  include_sf3 =
+    if package_506_ct == 1
+      false
+    else
+      true
+    end
+
   pkg_names.each do |name|
     the_773 = @h773[name]
     the_506f = @h506[name]
@@ -118,10 +134,12 @@ def edit_marc_rec(rec)
       if the_506f != nil
         unless the_506f == "na varies per title"
           if the_506f.downcase == "open access"
-            rec.append(MARC::DataField.new( '506', '0', ' ', ['f', 'Unlimited simultaneous users']))
+            marc_506 = MARC::DataField.new( '506', '0', ' ', ['f', 'Unlimited simultaneous users'])
           else
-            rec.append(MARC::DataField.new( '506', '1', ' ', ['a', 'Access limited to UNC Chapel Hill-authenticated users.'], ['f', the_506f]))
+            marc_506 = MARC::DataField.new( '506', '1', ' ', ['a', 'Access limited to UNC Chapel Hill-authenticated users.'], ['f', the_506f])
           end
+          marc_506.append(MARC::Subfield.new('3', name)) if include_sf3
+          rec.append(marc_506)
         end
       else
         @warnings << "The package #{name} has no associated 506f value."
