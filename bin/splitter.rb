@@ -108,8 +108,8 @@ def edit_marc_rec(rec)
   # if a record's packages have distinct 506f's, set a flag to write
   # the package name to subfield 3 for each 506. We don't want to write
   # extra 506s for packages we're dropping (due to quality/dupe/whatever), so
-  # first exlcude any packages without a 773.
-  package_506_ct = pkg_names.reject { |n| @h773[n].nil? }.
+  # only include packages being loaded.
+  package_506_ct = pkg_names.select { |n| @all_loaded_packages.include?(n) }.
                              map { |n| @h506[n] }.
                              uniq.
                              length
