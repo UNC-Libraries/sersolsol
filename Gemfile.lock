@@ -1,0 +1,31 @@
+GIT
+  remote: https://github.com/UNC-Libraries/marc_sersol.git
+  revision: 41408732ac68c4a154739e5c7c475dec6d48b492
+  specs:
+    marc_sersol (0.0.2)
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    highline (2.0.3)
+    marc (1.1.1)
+      rexml
+      scrub_rb (>= 1.0.1, < 2)
+      unf
+    rexml (3.2.5)
+    scrub_rb (1.0.1)
+    unf (0.1.4)
+      unf_ext
+    unf_ext (0.0.7.7-x64-mingw32)
+
+PLATFORMS
+  x64-mingw32
+
+DEPENDENCIES
+  bundler (~> 2.0)
+  highline (~> 2.0)
+  marc (~> 1.0)
+  marc_sersol!
+
+BUNDLED WITH
+   2.2.24
