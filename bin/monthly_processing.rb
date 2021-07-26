@@ -12,7 +12,7 @@ puts "the month = #{The_month}"
 puts "the day = 01"
 
 Pkg_data = "data/pkg_list.csv"
-        
+
 class QuitOrMain
   def initialize
     puts "\n\nWhat next?"
@@ -28,32 +28,32 @@ class MainMenu
     puts "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-="
     puts "Welcome to SerSolSol"
     puts "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-="
-    
-    
+
+
     puts "What needs to be done?"
     choose do |menu|
 
       menu.choice :rename_sersol_files do
         dirpath = "data/ssmrc/orig/#{The_year}"
         @ssstem = "_NO_360MARC_Update_monographs_"
-        sstypes = {"changed" => "change", 
-          "deleted" => "delete", 
+        sstypes = {"changed" => "change",
+          "deleted" => "delete",
           "new" => "add"}
-                
+
         def rename_files(oldtype, newtype)
           File.rename("#{@ssstem}#{oldtype}.mrc", "#{The_year}#{The_month}01#{newtype}-o.mrc")
-        end      
-                
+        end
+
         Dir.chdir(dirpath) do
           sstypes.each_pair {|o,n| rename_files(o, n)}
         end
-        
+
         QuitOrMain.new
       end
-      
+
       menu.choice :localize_ssj_numbers_in_files do
         dirpath = "data/ssmrc/orig/#{The_year}"
-        
+
         def localize(type)
           oldmrc = "#{The_year}#{The_month}01#{type}-o.mrc"
           newmrc = "#{The_year}#{The_month}01#{type}.mrc"
@@ -67,21 +67,21 @@ class MainMenu
           end
           writer.close()
         end
-        
+
         types = ["add", "change", "delete"]
         Dir.chdir(dirpath) do
           types.each {|type| localize(type)}
         end
         QuitOrMain.new
       end
-      
+
       menu.choice :check_package_list_against_marc_files do
         # opens marc file and gets records
         addmrc = "data/ssmrc/orig/#{The_year}/#{The_year}#{The_month}01add.mrc"
         chmrc = "data/ssmrc/orig/#{The_year}/#{The_year}#{The_month}01change.mrc"
-        delmrc = "data/ssmrc/orig/#{The_year}/#{The_year}#{The_month}01delete.mrc"        
+        delmrc = "data/ssmrc/orig/#{The_year}/#{The_year}#{The_month}01delete.mrc"
         readers = [MARC::Reader.new(addmrc), MARC::Reader.new(chmrc), MARC::Reader.new(delmrc)]
-      
+
         @mrc_pkg_names = {}
 
         readers.each do |reader|
@@ -94,9 +94,9 @@ class MainMenu
         end
 
         pdata = CSV.read(Pkg_data, :headers => true)
-        
+
         @csv_pkg_data = {}
-        
+
         pdata.each do |row|
           pnames = row['name']
           if row['aalload'] || row['hslload'] || row['lawload']
@@ -104,7 +104,7 @@ class MainMenu
           else
             load = 0
           end
-          
+
           pnames.split(";;;").each do |name|
             if load == 1
               @csv_pkg_data[name] = row['773title']
@@ -116,7 +116,7 @@ class MainMenu
         end
 
         pkg_hash = {"known" => [], "new" => [], "no773" => []}
-        
+
         @mrc_pkg_names.each_key do |mrcname|
           if @csv_pkg_data.key?(mrcname)
             pkg_hash["known"] << mrcname
@@ -127,12 +127,12 @@ class MainMenu
             pkg_hash["new"] << mrcname
           end
         end
-        
+
         puts "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-="
         puts "NEW PACKAGES"
         puts "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-="
         puts "#{pkg_hash["new"].size.to_s} new packages"
-        if pkg_hash["new"].size > 0 
+        if pkg_hash["new"].size > 0
           pkg_hash["new"].sort!.each {|n| puts n}
         end
 
@@ -140,7 +140,7 @@ class MainMenu
         puts "KNOWN PACKAGES MISSING 773"
         puts "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-="
         puts "#{pkg_hash["no773"].size.to_s} known packages"
-        if pkg_hash["no773"].size > 0 
+        if pkg_hash["no773"].size > 0
           pkg_hash["no773"].sort!.each {|n| puts n}
         end
 
@@ -148,18 +148,13 @@ class MainMenu
         puts "KNOWN PACKAGES"
         puts "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-="
         puts "#{pkg_hash["known"].size.to_s} known packages"
-         # if pkg_hash["known"].size > 0 
+         # if pkg_hash["known"].size > 0
          #   pkg_hash["known"].sort!.each {|n| puts n}
          # end
-        
+
         QuitOrMain.new
       end
-      
-      menu.choice :extract_records_to_load do
-      
-    
-      end
-      
+
       menu.choice :extract_package_marc_from_file do
         path = ask("Enter path to file\n")
         pkg = ask("Enter name of package to extract\n")
@@ -210,6 +205,10 @@ class MainMenu
           writer.close
         end
         QuitOrMain.new
+      end
+
+      menu.choice :quit do
+        exit
       end
     end
   end
