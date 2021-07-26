@@ -1,1 +1,0 @@
-Dir[File.dirname(__FILE__) + '/deduper/*.rb'].each {|file| require file }
