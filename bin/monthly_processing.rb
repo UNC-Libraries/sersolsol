@@ -93,7 +93,7 @@ class MainMenu
           end
         end
 
-        pdata = CSV.read(Pkg_data, :headers => true)
+        pdata = CSV.read(Pkg_data, :headers => true, :encoding => 'iso-8859-1:utf-8')
 
         @csv_pkg_data = {}
 

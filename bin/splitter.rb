@@ -22,7 +22,7 @@ puts "the day = 01"
 
 #Populate lists of packages to load for each library
 puts "Reading in SerialsSolutions package instructions..."
-pdata = CSV.read(Pkg_data, :headers => true)
+pdata = CSV.read(Pkg_data, :headers => true, :encoding => 'iso-8859-1:utf-8')
 
 pdata.each do |row|
   pnames = row['name']
@@ -72,7 +72,7 @@ delmrc = "data/ssmrc/orig/#{The_year}/#{The_year}#{The_month}01delete.mrc"
 # Populate hash with all loaded package names and associated 773 titles
 # So we can add package name 773
 puts "Assigning 773 value to each package..."
-pdata = CSV.read(Pkg_data, :headers => true)
+pdata = CSV.read(Pkg_data, :headers => true, :encoding => 'iso-8859-1:utf-8')
 @h773 = {}
 pdata.each do |row|
   pnames = row['name']
@@ -87,7 +87,7 @@ end
 # So we can add package 506s
 
 puts "Assigning 506$f value to each package..."
-pdata = CSV.read(Pkg_data, :headers => true)
+pdata = CSV.read(Pkg_data, :headers => true, :encoding => 'iso-8859-1:utf-8')
 @h506 = {}
 pdata.each do |row|
   pnames = row['name']
