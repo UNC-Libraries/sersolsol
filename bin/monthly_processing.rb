@@ -58,7 +58,16 @@ class MainMenu
           oldmrc = "#{The_year}#{The_month}01#{type}-o.mrc"
           newmrc = "#{The_year}#{The_month}01#{type}.mrc"
           recs = []
-          MARC::Reader.new(oldmrc).each {|rec| recs << rec}
+          begin
+            rec_num = 0
+            MARC::Reader.new(oldmrc).each do |rec|
+              rec_num += 1
+              recs << rec
+            end
+          rescue MARC::Exception => e
+            puts("Error reading record #{rec_num} in #{oldmrc}")
+            raise e
+          end
           writer = MARC::Writer.new(newmrc)
           puts "Localizing #{type} records..."
           recs.each do |rec|
