@@ -91,11 +91,18 @@ module SerSolSol
           @mrc_pkg_names = {}
 
           readers.each do |reader|
-            reader.each do |r|
-              pkg_names = r.packages
-              pkg_names.each do |name|
-                @mrc_pkg_names[name] = 1
+            begin
+              rec_num = 0
+              reader.each do |r|
+                rec_num += 1
+                pkg_names = r.packages
+                pkg_names.each do |name|
+                  @mrc_pkg_names[name] = 1
+                end
               end
+            rescue MARC::Exception => e
+              puts("Error reading record #{rec_num} in #{reader.inspect}")
+              raise e
             end
           end
 
