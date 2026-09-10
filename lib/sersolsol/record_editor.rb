@@ -104,7 +104,7 @@ module SerSolSol
           if sfs.include? "i"
             newfield = MARC::DataField.new(f.tag, f.indicator1, f.indicator2)
             f.each do |sf|
-              if sf.code != "9"
+              if sf.code != "i"
                 newfield.append(MARC::Subfield.new(sf.code, sf.value))
               else
                 newfield.append(MARC::Subfield.new('b', sf.value))
@@ -233,4 +233,3 @@ module SerSolSol
     end
   end
 end
-
